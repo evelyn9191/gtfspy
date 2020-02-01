@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import networkx
 import pandas
@@ -93,9 +94,15 @@ def match_stops_to_nodes(gtfs, walk_network):
     stop_Is = set(gtfs.get_straight_line_transfer_distances()['from_stop_I'])
     stops_df = gtfs.stops()
 
-    geo_index = GeoGridIndex(precision=6)
+    pickle.dump(network_nodes, open("network_nodes.pickle", "wb"))
+    try:
+        geo_index = GeoGridIndex(precision=6)
+    except KeyError:
+        pass    # TODO: this will probably not return upwards
+
     for net_node, data in network_nodes:
-        geo_index.add_point(GeoPoint(data['lat'], data['lon'], ref=net_node))
+        if data:
+            geo_index.add_point(GeoPoint(data['lat'], data['lon'], ref=net_node))
     stop_I_to_node = {}
     stop_I_to_dist = {}
     for stop_I in stop_Is:
@@ -128,8 +135,12 @@ def create_walk_network_from_osm(osm_file):
     walk_network = networkx.Graph()
     assert (os.path.exists(osm_file))
     ways = []
-    for i, entity in enumerate(parse_file(osm_file)):
+    nodes = []
+    parsed_data = parse_file(osm_file)
+    for i, entity in enumerate(parsed_data):
+
         if isinstance(entity, Node):
+            nodes.append(entity)
             walk_network.add_node(entity.id, lat=entity.lat, lon=entity.lon)
         elif isinstance(entity, Way):
             if "highway" in entity.tags:
@@ -147,10 +158,13 @@ def create_walk_network_from_osm(osm_file):
     node_lats = networkx.get_node_attributes(walk_network, 'lat')
     node_lons = networkx.get_node_attributes(walk_network, 'lon')
     for source, dest, data in walk_network.edges(data=True):
-        data["distance"] = wgs84_distance(node_lats[source],
-                                          node_lons[source],
-                                          node_lats[dest],
-                                          node_lons[dest])
+        try:
+            data["distance"] = wgs84_distance(node_lats[source],
+                                              node_lons[source],
+                                              node_lats[dest],
+                                              node_lons[dest])
+        except KeyError:
+            pass
     return walk_network
 
 

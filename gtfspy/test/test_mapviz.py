@@ -1,4 +1,5 @@
 import os
+import shutil
 import sqlite3
 import unittest
 
@@ -10,17 +11,23 @@ from gtfspy.mapviz import plot_route_network_from_gtfs
 class TestMapviz(unittest.TestCase):
 
     def setUp(self):
-        self.gtfs_source_dir = os.path.join(os.path.dirname(__file__), "test_data/filter_test_feed")
-        self.fname = self.gtfs_source_dir + "/test_gtfs.sqlite"
-        self._remove_temporary_files()
+        self.gtfs_source_dir = os.path.join(os.path.dirname(__file__), "test_data", "filter_test_feed")
+        self.fname = os.path.join(self.gtfs_source_dir, "test_gtfs.sqlite")
+        # self._remove_temporary_files()
         conn = sqlite3.connect(self.fname)
         import_gtfs(self.gtfs_source_dir, conn, preserve_connection=True, print_progress=False)
+        # self._remove_temporary_files()
         self.G = GTFS(conn)
 
     def _remove_temporary_files(self):
         for fn in [self.fname]:
             if os.path.exists(fn) and os.path.isfile(fn):
-                os.remove(fn)
+                os.unlink(fn)
+                # shutil.rmtree(fn)
+                # fn.close()
+                # os.remove(fn)
+                # del fn
+        # os.remove(self.fname)
 
     def tearDown(self):
         self._remove_temporary_files()
